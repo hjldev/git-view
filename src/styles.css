@@ -1255,9 +1255,18 @@ body.resizing-v * {
   padding: 0 8px;
   color: var(--muted);
 }
-.graph {
+.graph-wrap {
   flex: none;
+  max-width: 45%;
+  height: 100%;
+  overflow: hidden;
+}
+.graph {
   display: block;
+}
+.g-head {
+  fill: var(--gc);
+  stroke: none;
 }
 .g-stroke {
   fill: none;
@@ -1317,9 +1326,15 @@ body.resizing-v * {
 .ref-badges {
   display: inline-flex;
   gap: 3px;
-  flex: none;
+  flex: 0 1 auto;
+  min-width: 0;
   max-width: 50%;
   overflow: hidden;
+}
+/* Badges shrink before the commit message does. */
+.ct-subject > .ellipsis {
+  flex: 1 1 0;
+  min-width: 60px;
 }
 .ref-badge {
   display: inline-flex;

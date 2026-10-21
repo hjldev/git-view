@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Calendar, ChevronDown, Eye, FileSearch, GitBranch, PanelBottom, PanelRight, RefreshCw, Search, User, X } from 'lucide-react';
+import { Calendar, ChevronDown, Eye, FileSearch, GitBranch, PanelBottom, PanelRight, RefreshCw, Search, SlidersHorizontal, User, X } from 'lucide-react';
 import type { Author, Commit, DiffSpec } from '../../shared/types';
 import { api } from '../api';
 import { openDiff, refreshAll } from '../actions';
@@ -17,6 +17,8 @@ import { DiffView } from './DiffView';
 import { layoutGraph } from './graph';
 
 const PAGE = 2000;
+/** Edges spanning more rows than this are drawn as arrows (IDEA hides long edges). */
+const LONG_EDGE = 40;
 
 function FilterButton(props: { icon: React.ReactNode; label: string; value: string; onClick: (el: HTMLElement) => void; onClear: () => void }) {
   return (
@@ -199,6 +201,8 @@ export function LogView() {
   const [showDetails, setShowDetails] = usePref('log.details', true);
   const [showBranches, setShowBranches] = usePref('log.branches', true);
   const [showPreview, setShowPreview] = usePref('log.diffPreview', true);
+  const [order, setOrder] = usePref<'date' | 'topo'>('log.order', 'date');
+  const [longEdges, setLongEdges] = usePref('log.longEdges', false);
   const [data, setData] = useState<LogData | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -218,8 +222,9 @@ export function LogView() {
       author: filter.author || undefined,
       since: filter.since || undefined,
       path: filter.path || undefined,
+      order,
     }),
-    [filter],
+    [filter, order],
   );
 
   // Reset the selection when switching repositories or filters.
@@ -298,7 +303,10 @@ export function LogView() {
   useEffect(() => setPreview(null), [primary]);
 
   const commits = data?.commits ?? [];
-  const graph = useMemo(() => layoutGraph(commits, data?.flat ?? false), [commits, data?.flat]);
+  const graph = useMemo(
+    () => layoutGraph(commits, data?.flat ?? false, longEdges ? Infinity : LONG_EDGE),
+    [commits, data?.flat, longEdges],
+  );
   const selectedCommits = commits.filter((c) => selected.has(c.hash));
 
   const table = (
@@ -417,6 +425,21 @@ export function LogView() {
         </button>
         <button className={cx('icon-btn', showPreview && 'active')} title="显示差异预览" onClick={() => setShowPreview(!showPreview)}>
           <PanelBottom size={15} />
+        </button>
+        <button
+          className="icon-btn"
+          title="显示选项"
+          onClick={(e) =>
+            showMenuAt(e.currentTarget, [
+              { header: '排序' },
+              { label: '按提交日期', checked: order === 'date', onClick: () => setOrder('date') },
+              { label: '拓扑顺序（分支集中显示）', checked: order === 'topo', onClick: () => setOrder('topo') },
+              'sep',
+              { label: '显示长连线', checked: longEdges, onClick: () => setLongEdges(!longEdges) },
+            ])
+          }
+        >
+          <SlidersHorizontal size={15} />
         </button>
         <span className="tb-sep-h" />
         <button

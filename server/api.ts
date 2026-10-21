@@ -221,7 +221,8 @@ async function repoInfo(ctx: RepoCtx): Promise<RepoInfo> {
 
 async function log(root: string, q: LogQuery): Promise<LogResult> {
   const max = Math.min(Math.max(Number(q.max) || 1000, 1), 50000);
-  const args = ['log', '--decorate=full', `--format=${LOG_FORMAT}`, '--topo-order', `-n${max + 1}`];
+  const order = q.order === 'topo' ? '--topo-order' : '--date-order';
+  const args = ['log', '--decorate=full', `--format=${LOG_FORMAT}`, order, `-n${max + 1}`];
   if (q.skip) args.push(`--skip=${Number(q.skip)}`);
   const flat = !!(q.author || q.grep || q.since || q.until);
   if (q.author) args.push(`--author=${q.author}`, '--regexp-ignore-case');

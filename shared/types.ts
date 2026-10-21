@@ -53,6 +53,8 @@ export interface LogQuery {
   since?: string;
   until?: string;
   range?: string; // e.g. "main..feature"
+  /** 'date' interleaves branches by commit date (compact graph); 'topo' groups each branch together. */
+  order?: 'date' | 'topo';
 }
 
 export interface LogResult {

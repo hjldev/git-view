@@ -1,17 +1,25 @@
-import { memo, useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { memo, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import type { Commit } from '../../shared/types';
 import { cx, formatDate, formatFullDate, shortHash } from '../util';
-import type { GraphEdge, GraphRow } from './graph';
+import type { GraphArrow, GraphEdge, GraphRow } from './graph';
 import { RefBadges } from './RefBadges';
 
 export const ROW_H = 26;
-const LANE_W = 14;
+const MAX_LANE_W = 14;
+const MIN_LANE_W = 6;
+/** Graph area budget; lanes get narrower when a history needs many of them. */
+const GRAPH_BUDGET = 260;
 const PAD = 6;
 
-const X = (lane: number) => PAD + lane * LANE_W + LANE_W / 2;
 const Y = (y: 0 | 1 | 2) => (y === 0 ? 0 : y === 1 ? ROW_H / 2 : ROW_H);
 
-function edgePath(e: GraphEdge): string {
+export function laneWidthFor(graph: GraphRow[]): number {
+  let max = 1;
+  for (const r of graph) if (r.width > max) max = r.width;
+  return Math.max(MIN_LANE_W, Math.min(MAX_LANE_W, Math.floor(GRAPH_BUDGET / max)));
+}
+
+function edgePath(e: GraphEdge, X: (lane: number) => number): string {
   const x1 = X(e.x1);
   const x2 = X(e.x2);
   const y1 = Y(e.y1);
@@ -21,16 +29,43 @@ function edgePath(e: GraphEdge): string {
   return `M${x1} ${y1}C${x1} ${ym} ${x2} ${ym} ${x2} ${y2}`;
 }
 
-const GraphCell = memo(function GraphCell({ row, head, merge }: { row: GraphRow; head: boolean; merge: boolean }) {
-  const w = PAD * 2 + row.width * LANE_W;
+/** Collapsed long edge: a short line ending in an arrow head. */
+function arrowPath(a: GraphArrow, X: (lane: number) => number, laneW: number): { line: string; head: string } {
+  const x = X(a.x);
+  const c = ROW_H / 2;
+  if (a.dir === 'up') {
+    return { line: `M${x} ${c}L${x} 6`, head: `M${x - 3} 7L${x} 2L${x + 3} 7Z` };
+  }
+  const ex = x + a.dx * laneW * 0.7;
+  const ey = ROW_H - 5;
+  if (!a.dx) return { line: `M${x} ${c}L${x} ${ey}`, head: `M${x - 3} ${ey - 1}L${x} ${ROW_H - 1}L${x + 3} ${ey - 1}Z` };
+  return { line: `M${x} ${c}L${ex} ${ey}`, head: `M${ex - 3.5} ${ey - 1.5}L${ex + 1} ${ROW_H - 1}L${ex + 1.5} ${ey - 4}Z` };
+}
+
+const GraphCell = memo(function GraphCell(props: { row: GraphRow; head: boolean; merge: boolean; laneW: number }) {
+  const { row, laneW } = props;
+  const X = (lane: number) => PAD + lane * laneW + laneW / 2;
+  const w = PAD * 2 + row.width * laneW;
+  const r = Math.min(4, laneW / 2 - 0.5);
   return (
-    <svg className="graph" width={w} height={ROW_H}>
-      {row.edges.map((e, i) => (
-        <path key={i} d={edgePath(e)} className={`g-stroke g${e.color}`} />
-      ))}
-      {head && <circle cx={X(row.lane)} cy={ROW_H / 2} r={6.5} className={`g-ring g${row.color}`} />}
-      <circle cx={X(row.lane)} cy={ROW_H / 2} r={merge ? 3 : 4} className={cx(`g-fill g${row.color}`, merge && 'g-merge')} />
-    </svg>
+    <div className="graph-wrap" style={{ width: w }}>
+      <svg className="graph" width={w} height={ROW_H}>
+        {row.edges.map((e, i) => (
+          <path key={i} d={edgePath(e, X)} className={`g-stroke g${e.color}`} />
+        ))}
+        {row.arrows.map((a, i) => {
+          const p = arrowPath(a, X, laneW);
+          return (
+            <g key={`a${i}`} className={`g${a.color}`}>
+              <path d={p.line} className="g-stroke" />
+              <path d={p.head} className="g-head" />
+            </g>
+          );
+        })}
+        {props.head && <circle cx={X(row.lane)} cy={ROW_H / 2} r={r + 2.5} className={`g-ring g${row.color}`} />}
+        <circle cx={X(row.lane)} cy={ROW_H / 2} r={props.merge ? r - 1 : r} className={cx(`g-fill g${row.color}`, props.merge && 'g-merge')} />
+      </svg>
+    </div>
   );
 });
 
@@ -54,6 +89,7 @@ export function CommitTable(p: CommitTableProps) {
   const [scrollTop, setScrollTop] = useState(0);
   const [height, setHeight] = useState(600);
   const anchor = useRef<number>(-1);
+  const laneW = useMemo(() => laneWidthFor(p.graph), [p.graph]);
 
   useLayoutEffect(() => {
     const el = ref.current!;
@@ -155,7 +191,7 @@ export function CommitTable(p: CommitTableProps) {
         }}
       >
         <div className="ct-subject">
-          {g && <GraphCell row={g} head={isHead} merge={c.parents.length > 1} />}
+          {g && <GraphCell row={g} head={isHead} merge={c.parents.length > 1} laneW={laneW} />}
           <RefBadges refs={c.refs} headBranch={p.headBranch} />
           <span className="ellipsis" title={c.subject}>
             {c.subject}
