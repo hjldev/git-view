@@ -9,12 +9,21 @@ IDEA 风格的本地 Git 仓库可视化管理工具。后端用 Node.js 直接�
 ```bash
 npm install
 npm run build
-npm start -- ~/projects/my-repo     # 启动并在浏览器中打开指定仓库
+npm link          # 安装全局命令 git-view（卸载：npm unlink -g git-view）
 ```
 
-不带仓库参数时会显示欢迎页，可以打开最近的仓库、浏览本地目录、克隆或初始化仓库。
+之后在任意 Git 仓库（或其子目录）中运行：
 
-常用参数：`--port 7420`、`--no-open`。
+```bash
+git-view          # 也可以写成 git view
+```
+
+- 不带参数时打开当前所在的仓库；不在仓库中则显示欢迎页（最近的仓库、浏览目录、克隆、初始化）。
+- 也可以指定路径：`git-view ~/projects/my-repo`。
+- Git View 已在运行时，再次执行只会在浏览器中打开对应仓库，不会报端口占用。
+- 常用参数：`--port 7420`、`--no-open`。
+
+不想安装全局命令时，也可以在项目目录中运行 `npm start -- <仓库目录>`。
 
 开发模式（前端热更新，访问 http://localhost:5173）：
 
