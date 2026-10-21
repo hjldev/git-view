@@ -1,0 +1,31 @@
+{
+  "name": "git-view",
+  "version": "0.1.0",
+  "private": true,
+  "description": "IDEA 风格的本地 Git 仓库可视化管理工具",
+  "type": "module",
+  "bin": {
+    "git-view": "server/cli.ts"
+  },
+  "scripts": {
+    "dev": "concurrently -k -n server,web -c blue,green \"node --watch server/cli.ts --dev\" \"vite\"",
+    "build": "tsc --noEmit && vite build",
+    "start": "node server/cli.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "highlight.js": "^11.12.0",
+    "lucide-react": "^1.61.0",
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.5",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "@vitejs/plugin-react": "^6.1.2",
+    "concurrently": "^10.0.6",
+    "typescript": "^7.0.2",
+    "vite": "^8.3.4"
+  }
+}
